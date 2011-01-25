@@ -203,7 +203,6 @@
 	"desc": "MS-Windows Japanese (cp932)",
 	"class": "cp932",
 	"arg": "cp932",
-	"toUTF8only": true
 },
 "ms_kanji": {"alias": "shift_jis"},
 "x-sjis": {"alias": "shift_jis", "comment": "often seen non-IANA alias"},
@@ -211,12 +210,10 @@
 	"desc": "Shift-JIS Japanese",
 	"class": "cp932",
 	"arg": "shiftjis",
-	"toUTF8only": true
 },
 "8bit": {
 	"comment": "special class for raw 8bit data that has been converted to utf-8",
 	"desc": "raw 8-bit data",
 	"class": "8bit",
-	"toCharsetOnly": true
 }
 }

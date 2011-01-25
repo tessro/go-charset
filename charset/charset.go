@@ -43,8 +43,6 @@ type info struct {
 	Desc     string
 	Class    string
 	Arg      string
-	NoReader bool
-	NoWriter bool
 }
 
 // Converter represents a character set converter.
