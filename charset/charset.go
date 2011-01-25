@@ -10,15 +10,16 @@ import (
 	"utf8"
 )
 
-// map from canonical name to 
-
 type newConverter func(arg string) (func() Converter, os.Error)
 type class struct {
 	fromUTF8 newConverter
 	toUTF8   newConverter
 }
 
+// CharsetDir is the directory where charset will look for
+// its data files.
 var CharsetDir = "/usr/local/lib/go-charset/data"
+
 func init() {
 	root := os.Getenv("GOROOT")
 	if root != "" {
@@ -46,8 +47,15 @@ type info struct {
 	NoWriter bool
 }
 
+// Converter represents a character set converter.
+// The Convert method converts the given data,
+// and returns the number of bytes of data consumed,
+// a slice containing the converted data (which may be
+// overwritten on the next call to Convert), and any
+// conversion error. If eof is true, the data represents
+// the final bytes of the input.
 type Converter interface {
-	Convert(data []byte, eof bool) (int, []byte, os.Error)
+	Convert(data []byte, eof bool) (n int, cdata []byte, err os.Error)
 }
 
 var (
@@ -148,6 +156,7 @@ func findClass(name string) (class class, arg string, err os.Error) {
 	return class, cs.Arg, nil
 }
 
+// Names returns set of known canonical character set names.
 func Names() []string {
 	var names []string
 	readCharsetsOnce.Do(readCharsets)
@@ -159,6 +168,7 @@ func Names() []string {
 	return names
 }
 
+// Aliases returns the known aliases of a character set.
 func Aliases(name string) []string {
 	return nil // TODO
 }

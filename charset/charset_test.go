@@ -6,6 +6,8 @@ import (
 	"io"
 )
 
+// TODO test big5 utf8
+
 var testReaders = []func(io.Reader) io.Reader {
 	func(r io.Reader) io.Reader { return r },
 	iotest.OneByteReader,
