@@ -18,7 +18,13 @@ type class struct {
 	toUTF8   newConverter
 }
 
-var CharsetDir = "/Users/rog/src/go-charset/charset/data"	// TODO
+var CharsetDir = "/usr/local/lib/go-charset/data"
+func init() {
+	root := os.Getenv("GOROOT")
+	if root != "" {
+		CharsetDir = root + "/src/pkg/go-charset.googlecode.com/hg/charset/data"
+	}
+}
 
 var classes = map[string]class{
 	"cp": {codePageFromUTF8, codepageToUTF8},
