@@ -102,7 +102,6 @@ func (cs *Charset) Register(override bool) {
 // readCharsets reads the JSON config file.
 // It's done once only, when first needed.
 func readCharsets() {
-	return
 	file := filename("charsets.json")
 	csdata, err := os.Open(file, os.O_RDONLY, 0)
 	if err != nil {
