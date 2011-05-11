@@ -103,7 +103,7 @@ func (cs *Charset) Register(override bool) {
 // It's done once only, when first needed.
 func readCharsets() {
 	file := filename("charsets.json")
-	csdata, err := os.Open(file, os.O_RDONLY, 0)
+	csdata, err := os.Open(file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "charset: cannot open %q: %v\n", file, err)
 		return
@@ -363,7 +363,7 @@ func appendRune(buf []byte, r int) []byte {
 
 func readFile(name string) ([]byte, os.Error) {
 	file := filename(name)
-	fd, err := os.Open(file, os.O_RDONLY, 0)
+	fd, err := os.Open(file)
 	if fd == nil {
 		return nil, err
 	}

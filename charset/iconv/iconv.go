@@ -9,6 +9,7 @@
 //   )
 package iconv
 
+//#cgo LDFLAGS: -liconv -L/opt/local/lib
 //#include <stdlib.h>
 //#include <string.h>
 //#include <iconv.h>
@@ -47,6 +48,7 @@ package iconv
 //nameList *
 //listNames(void) {
 //	nameList hd;
+//	hd.next = 0;
 //	iconvlist(addNames, &hd);
 //	return hd.next;
 //}
@@ -62,7 +64,7 @@ import (
 )
 
 type iconvTranslator struct {
-	cd C.iconv_t
+	cd      C.iconv_t
 	scratch []byte
 }
 
@@ -102,12 +104,12 @@ func init() {
 	for _, aliases := range Names() {
 		aliases := aliases
 		cs := &charset.Charset{
-			Name: aliases[0],
+			Name:    aliases[0],
 			Aliases: aliases[1:],
 			TranslatorFrom: func() (charset.Translator, os.Error) {
 				return Translator("UTF-8", aliases[0])
 			},
-			TranslatorTo: func()(charset.Translator, os.Error) {
+			TranslatorTo: func() (charset.Translator, os.Error) {
 				return Translator(aliases[0], "UTF-8")
 			},
 		}
@@ -131,7 +133,7 @@ func Translator(toCharset, fromCharset string) (charset.Translator, os.Error) {
 		return nil, err
 	}
 	t := &iconvTranslator{cd: cd}
-	runtime.SetFinalizer(t, func(){
+	runtime.SetFinalizer(t, func() {
 		C.iconv_close(cd)
 	})
 	return t, nil
@@ -141,18 +143,18 @@ func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, r
 	n := 0
 	p.scratch = p.scratch[:0]
 	for len(data) > 0 {
-		p.scratch = ensureCap(p.scratch, len(p.scratch) + len(data) * utf8.UTFMax)
+		p.scratch = ensureCap(p.scratch, len(p.scratch)+len(data)*utf8.UTFMax)
 		cData := (*C.char)(unsafe.Pointer(&data[:1][0]))
 		nData := C.size_t(len(data))
 
 		ns := len(p.scratch)
-		cScratch := (*C.char)(unsafe.Pointer(&p.scratch[ns: ns+1][0]))
+		cScratch := (*C.char)(unsafe.Pointer(&p.scratch[ns : ns+1][0]))
 		nScratch := C.size_t(cap(p.scratch) - ns)
 		r, err := C.iconv(p.cd, &cData, &nData, &cScratch, &nScratch)
 
-		p.scratch = p.scratch[0 : cap(p.scratch) - int(nScratch)]
+		p.scratch = p.scratch[0 : cap(p.scratch)-int(nScratch)]
 		n += len(data) - int(nData)
-		data = data[len(data) - int(nData) : ]
+		data = data[len(data)-int(nData):]
 
 		if r != C.iconv_error || err == nil {
 			return n, p.scratch, nil
@@ -168,7 +170,7 @@ func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, r
 			return n, p.scratch, nil
 		case C.E2BIG:
 			// output buffer not large enough; try again with larger buffer.
-			p.scratch = ensureCap(p.scratch, cap(p.scratch) + utf8.UTFMax)
+			p.scratch = ensureCap(p.scratch, cap(p.scratch)+utf8.UTFMax)
 		default:
 			panic(fmt.Sprintf("unexpected error code: %v", err))
 		}
@@ -187,11 +189,11 @@ func ensureCap(s []byte, n int) []byte {
 	m := cap(s)
 	if m == 0 {
 		m = n
-	}else{
-		for{
+	} else {
+		for {
 			if m < 1024 {
 				m += m
-			}else{
+			} else {
 				m += m / 4
 			}
 			if m >= n {
@@ -206,7 +208,7 @@ func ensureCap(s []byte, n int) []byte {
 
 func appendRune(buf []byte, r int) []byte {
 	n := len(buf)
-	buf = ensureCap(buf, n + utf8.UTFMax)
-	nu := utf8.EncodeRune(buf[n:n + utf8.UTFMax], r)
-	return buf[0:n + nu]
+	buf = ensureCap(buf, n+utf8.UTFMax)
+	nu := utf8.EncodeRune(buf[n:n+utf8.UTFMax], r)
+	return buf[0 : n+nu]
 }

@@ -1,4 +1,5 @@
 package main
+
 import (
 	"bytes"
 	"flag"
@@ -39,7 +40,7 @@ func main() {
 		f = os.Stdin
 	case 1:
 		var err os.Error
-		f, err = os.Open(flag.Arg(0), os.O_RDONLY, 0)
+		f, err = os.Open(flag.Arg(0))
 		if err != nil {
 			fatalf("cannot open %q: %v", err)
 		}
@@ -67,10 +68,10 @@ func listCharsets(verbose bool, csname string) {
 				fatalf("no such charset %q", csname)
 			}
 			fmt.Fprintf(&buf, "%s %s\n", cs.Name, strings.Join(cs.Aliases, " "))
-		}else{
+		} else {
 			fmt.Fprintf(&buf, "%v\n", strings.Join(charset.Names(), " "))
 		}
-	}else{
+	} else {
 		var charsets []*charset.Charset
 		if csname != "" {
 			cs := charset.Info(csname)
@@ -78,7 +79,7 @@ func listCharsets(verbose bool, csname string) {
 				fatalf("no such charset %q", csname)
 			}
 			charsets = []*charset.Charset{cs}
-		}else{
+		} else {
 			for _, name := range charset.Names() {
 				if cs := charset.Info(name); cs != nil {
 					charsets = append(charsets, cs)

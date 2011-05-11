@@ -74,7 +74,7 @@ type big5Key bool
 func fromBig5(arg string) (Translator, os.Error) {
 	big5map, err := cache(big5Key(false), func() (interface{}, os.Error) {
 		file := filename(big5Data)
-		fd, err := os.Open(file, os.O_RDONLY, 0)
+		fd, err := os.Open(file)
 		if err != nil {
 			return nil, fmt.Errorf("charset: cannot open %q: %v", file, err)
 		}
