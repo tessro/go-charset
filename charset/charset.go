@@ -11,7 +11,7 @@ import (
 	"utf8"
 )
 
-const errNotFound = os.ErrorString("charset: character set not found")
+const errNotFound = os.NewError("charset: character set not found")
 
 // CharsetDir is the data file directory.
 var CharsetDir = "/usr/local/lib/go-charset/data"

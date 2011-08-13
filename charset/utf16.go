@@ -90,7 +90,7 @@ func getEndian(arg string) (binary.ByteOrder, os.Error) {
 	case "":
 		return nil, nil
 	}
-	return nil, os.ErrorString("charset: unknown utf16 endianness")
+	return nil, os.NewError("charset: unknown utf16 endianness")
 }
 
 

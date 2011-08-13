@@ -128,12 +128,12 @@ func Translator(toCharset, fromCharset string) (charset.Translator, os.Error) {
 
 	if cd == C.iconv_open_error {
 		if err == os.EINVAL {
-			return nil, os.ErrorString("iconv: conversion not supported")
+			return nil, os.NewError("iconv: conversion not supported")
 		}
 		return nil, err
 	}
 	t := &iconvTranslator{cd: cd}
-	runtime.SetFinalizer(t, func() {
+	runtime.SetFinalizer(t, func(*iconvTranslator) {
 		C.iconv_close(cd)
 	})
 	return t, nil
