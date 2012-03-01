@@ -2,10 +2,10 @@ package main
 
 import (
 	"bytes"
+	"code.google.com/p/go-charset/charset"
+	_ "code.google.com/p/go-charset/charset/iconv"
 	"flag"
 	"fmt"
-	"go-charset.googlecode.com/hg/charset"
-	_ "go-charset.googlecode.com/hg/charset/iconv"
 	"io"
 	"os"
 	"strings"
@@ -39,7 +39,7 @@ func main() {
 	case 0:
 		f = os.Stdin
 	case 1:
-		var err os.Error
+		var err error
 		f, err = os.Open(flag.Arg(0))
 		if err != nil {
 			fatalf("cannot open %q: %v", err)

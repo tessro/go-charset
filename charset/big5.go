@@ -2,9 +2,9 @@ package charset
 
 import (
 	"fmt"
-	"os"
-	"utf8"
 	"io/ioutil"
+	"os"
+	"unicode/utf8"
 )
 
 func init() {
@@ -21,10 +21,10 @@ const (
 type translateFromBig5 struct {
 	font    int
 	scratch []byte
-	big5map []int
+	big5map []rune
 }
 
-func (p *translateFromBig5) Translate(data []byte, eof bool) (int, []byte, os.Error) {
+func (p *translateFromBig5) Translate(data []byte, eof bool) (int, []byte, error) {
 	p.scratch = p.scratch[:0]
 	n := 0
 	for len(data) > 0 {
@@ -71,8 +71,8 @@ func (p *translateFromBig5) Translate(data []byte, eof bool) (int, []byte, os.Er
 
 type big5Key bool
 
-func fromBig5(arg string) (Translator, os.Error) {
-	big5map, err := cache(big5Key(false), func() (interface{}, os.Error) {
+func fromBig5(arg string) (Translator, error) {
+	big5map, err := cache(big5Key(false), func() (interface{}, error) {
 		file := filename(big5Data)
 		fd, err := os.Open(file)
 		if err != nil {
@@ -83,7 +83,7 @@ func fromBig5(arg string) (Translator, os.Error) {
 		if err != nil {
 			return nil, fmt.Errorf("charset: error reading %q: %v", file, err)
 		}
-		big5map := []int(string(buf))
+		big5map := []rune(string(buf))
 		if len(big5map) != big5Max {
 			return nil, fmt.Errorf("charset: corrupt data in %q", file)
 		}
@@ -92,5 +92,5 @@ func fromBig5(arg string) (Translator, os.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return &translateFromBig5{big5map: big5map.([]int), font: -1}, nil
+	return &translateFromBig5{big5map: big5map.([]rune), font: -1}, nil
 }

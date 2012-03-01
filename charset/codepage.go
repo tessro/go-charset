@@ -2,8 +2,7 @@ package charset
 
 import (
 	"fmt"
-	"utf8"
-	"os"
+	"unicode/utf8"
 )
 
 func init() {
@@ -11,14 +10,14 @@ func init() {
 }
 
 type translateFromCodePage struct {
-	byte2rune []int
+	byte2rune []rune
 	scratch   []byte
 }
 
 type cpKeyFrom string
 type cpKeyTo string
 
-func (p *translateFromCodePage) Translate(data []byte, eof bool) (int, []byte, os.Error) {
+func (p *translateFromCodePage) Translate(data []byte, eof bool) (int, []byte, error) {
 	p.scratch = p.scratch[:0]
 	for _, x := range data {
 		p.scratch = appendRune(p.scratch, p.byte2rune[x])
@@ -27,11 +26,11 @@ func (p *translateFromCodePage) Translate(data []byte, eof bool) (int, []byte, o
 }
 
 type translateToCodePage struct {
-	rune2byte map[int]byte
+	rune2byte map[rune]byte
 	scratch   []byte
 }
 
-func (p *translateToCodePage) Translate(data []byte, eof bool) (int, []byte, os.Error) {
+func (p *translateToCodePage) Translate(data []byte, eof bool) (int, []byte, error) {
 	n := 0
 	p.scratch = p.scratch[:0]
 	for len(data) > 0 {
@@ -50,13 +49,13 @@ func (p *translateToCodePage) Translate(data []byte, eof bool) (int, []byte, os.
 	return n, p.scratch, nil
 }
 
-func fromCodePage(arg string) (Translator, os.Error) {
-	runes, err := cache(cpKeyFrom(arg), func() (interface{}, os.Error) {
+func fromCodePage(arg string) (Translator, error) {
+	runes, err := cache(cpKeyFrom(arg), func() (interface{}, error) {
 		data, err := readFile(arg)
 		if err != nil {
 			return nil, err
 		}
-		runes := []int(string(data))
+		runes := []rune(string(data))
 		if len(runes) != 256 {
 			return nil, fmt.Errorf("charset: %q has wrong rune count", arg)
 		}
@@ -65,17 +64,17 @@ func fromCodePage(arg string) (Translator, os.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return &translateFromCodePage{byte2rune: runes.([]int)}, nil
+	return &translateFromCodePage{byte2rune: runes.([]rune)}, nil
 }
 
-func toCodePage(arg string) (Translator, os.Error) {
-	m, err := cache(cpKeyTo(arg), func() (interface{}, os.Error) {
+func toCodePage(arg string) (Translator, error) {
+	m, err := cache(cpKeyTo(arg), func() (interface{}, error) {
 		data, err := readFile(arg)
 		if err != nil {
 			return nil, err
 		}
 
-		m := make(map[int]byte)
+		m := make(map[rune]byte)
 		i := 0
 		for _, r := range string(data) {
 			m[r] = byte(i)
@@ -89,5 +88,5 @@ func toCodePage(arg string) (Translator, os.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return &translateToCodePage{rune2byte: m.(map[int]byte)}, nil
+	return &translateToCodePage{rune2byte: m.(map[rune]byte)}, nil
 }

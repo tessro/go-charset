@@ -54,13 +54,14 @@ package iconv
 //}
 import "C"
 import (
+	"code.google.com/p/go-charset/charset"
+	"errors"
 	"fmt"
-	"go-charset.googlecode.com/hg/charset"
 	"os"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 	"unsafe"
-	"utf8"
 )
 
 type iconvTranslator struct {
@@ -106,10 +107,10 @@ func init() {
 		cs := &charset.Charset{
 			Name:    aliases[0],
 			Aliases: aliases[1:],
-			TranslatorFrom: func() (charset.Translator, os.Error) {
+			TranslatorFrom: func() (charset.Translator, error) {
 				return Translator("UTF-8", aliases[0])
 			},
-			TranslatorTo: func() (charset.Translator, os.Error) {
+			TranslatorTo: func() (charset.Translator, error) {
 				return Translator(aliases[0], "UTF-8")
 			},
 		}
@@ -119,7 +120,7 @@ func init() {
 
 // Translator returns a Translator that translates between
 // the named character sets.
-func Translator(toCharset, fromCharset string) (charset.Translator, os.Error) {
+func Translator(toCharset, fromCharset string) (charset.Translator, error) {
 	cto, cfrom := C.CString(toCharset), C.CString(fromCharset)
 	cd, err := C.iconv_open(cto, cfrom)
 
@@ -128,7 +129,7 @@ func Translator(toCharset, fromCharset string) (charset.Translator, os.Error) {
 
 	if cd == C.iconv_open_error {
 		if err == os.EINVAL {
-			return nil, os.NewError("iconv: conversion not supported")
+			return nil, errors.New("iconv: conversion not supported")
 		}
 		return nil, err
 	}
@@ -139,7 +140,7 @@ func Translator(toCharset, fromCharset string) (charset.Translator, os.Error) {
 	return t, nil
 }
 
-func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, rerr os.Error) {
+func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, rerr error) {
 	n := 0
 	p.scratch = p.scratch[:0]
 	for len(data) > 0 {

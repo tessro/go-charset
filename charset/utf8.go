@@ -1,9 +1,6 @@
 package charset
 
-import (
-	"os"
-	"utf8"
-)
+import "unicode/utf8"
 
 func init() {
 	registerClass("utf8", toUTF8, toUTF8)
@@ -15,7 +12,7 @@ type translateToUTF8 struct {
 
 const errorRuneLen = len(string(utf8.RuneError))
 
-func (p *translateToUTF8) Translate(data []byte, eof bool) (int, []byte, os.Error) {
+func (p *translateToUTF8) Translate(data []byte, eof bool) (int, []byte, error) {
 	p.scratch = ensureCap(p.scratch, (len(data))*errorRuneLen)[:0]
 	n := 0
 	for len(data) > 0 {
@@ -30,6 +27,6 @@ func (p *translateToUTF8) Translate(data []byte, eof bool) (int, []byte, os.Erro
 	return n, p.scratch, nil
 }
 
-func toUTF8(arg string) (Translator, os.Error) {
+func toUTF8(arg string) (Translator, error) {
 	return new(translateToUTF8), nil
 }

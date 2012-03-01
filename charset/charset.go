@@ -1,27 +1,18 @@
 package charset
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"json"
 	"os"
 	"strings"
 	"sync"
-	"utf8"
+	"unicode/utf8"
 )
 
-var errNotFound = os.NewError("charset: character set not found")
-
-// CharsetDir is the data file directory.
-var CharsetDir = "/usr/local/lib/go-charset/data"
-
-func init() {
-	root := os.Getenv("GOROOT")
-	if root != "" {
-		CharsetDir = root + "/src/pkg/go-charset.googlecode.com/hg/data"
-	}
-}
+var errNotFound = errors.New("charset: character set not found")
 
 // A general cache store that character set translators
 // can use for persistent storage of data.
@@ -44,11 +35,11 @@ type charsetEntry struct {
 
 // Charset holds information about a given character set.
 type Charset struct {
-	Name           string                        // Canonical name of character set.
-	Aliases        []string                      // Known aliases.
-	Desc           string                        // Description.
-	TranslatorFrom func() (Translator, os.Error) // Create a Translator from this character set.
-	TranslatorTo   func() (Translator, os.Error) // Create a Translator To this character set.
+	Name           string                     // Canonical name of character set.
+	Aliases        []string                   // Known aliases.
+	Desc           string                     // Description.
+	TranslatorFrom func() (Translator, error) // Create a Translator from this character set.
+	TranslatorTo   func() (Translator, error) // Create a Translator To this character set.
 }
 
 // Translator represents a character set converter.
@@ -59,7 +50,7 @@ type Charset struct {
 // conversion error. If eof is true, the data represents
 // the final bytes of the input.
 type Translator interface {
-	Translate(data []byte, eof bool) (n int, cdata []byte, err os.Error)
+	Translate(data []byte, eof bool) (n int, cdata []byte, err error)
 }
 
 var (
@@ -71,13 +62,13 @@ var (
 // Each class of can be instantiated with an argument specified in the config file.
 // Many character sets can use a single class.
 type class struct {
-	from, to func(arg string) (Translator, os.Error)
+	from, to func(arg string) (Translator, error)
 }
 
 // The set of classes, indexed by class name.
 var classes = make(map[string]*class)
 
-func registerClass(charset string, from, to func(arg string) (Translator, os.Error)) {
+func registerClass(charset string, from, to func(arg string) (Translator, error)) {
 	classes[charset] = &class{from, to}
 }
 
@@ -102,18 +93,16 @@ func (cs *Charset) Register(override bool) {
 // readCharsets reads the JSON config file.
 // It's done once only, when first needed.
 func readCharsets() {
-	file := filename("charsets.json")
-	csdata, err := os.Open(file)
+	csdata, err := readFile("charsets.json")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "charset: cannot open %q: %v\n", file, err)
+		fmt.Fprintf(os.Stderr, `charset: cannot open "charsets.json": %v\n`, err)
 		return
 	}
 
 	var entries map[string]charsetEntry
-	dec := json.NewDecoder(csdata)
-	err = dec.Decode(&entries)
+	err = json.Unmarshal(csdata, &entries)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "charset: cannot decode %q: %v\n", file, err)
+		fmt.Fprintf(os.Stderr, "charset: cannot decode config file: %v\n", err)
 	}
 	for name, e := range entries {
 		name = NormalizedName(name)
@@ -128,12 +117,12 @@ func readCharsets() {
 		}
 		arg := e.Arg
 		if class.from != nil {
-			cs.TranslatorFrom = func() (Translator, os.Error) {
+			cs.TranslatorFrom = func() (Translator, error) {
 				return class.from(arg)
 			}
 		}
 		if class.to != nil {
-			cs.TranslatorTo = func() (Translator, os.Error) {
+			cs.TranslatorTo = func() (Translator, error) {
 				return class.to(arg)
 			}
 		}
@@ -143,7 +132,7 @@ func readCharsets() {
 
 // NewReader returns a new Reader that translates from the named
 // character set to UTF-8 as it reads r.
-func NewReader(charset string, r io.Reader) (io.Reader, os.Error) {
+func NewReader(charset string, r io.Reader) (io.Reader, error) {
 	cs := Info(charset)
 	if cs == nil {
 		return nil, errNotFound
@@ -159,7 +148,7 @@ func NewReader(charset string, r io.Reader) (io.Reader, os.Error) {
 // of UTF-8 text into writes on w of text in the named character set.
 // The Close is necessary to flush any remaining partially translated
 // characters to the output.
-func NewWriter(charset string, w io.Writer) (io.WriteCloser, os.Error) {
+func NewWriter(charset string, w io.Writer) (io.WriteCloser, error) {
 	cs := Info(charset)
 	if cs == nil {
 		return nil, errNotFound
@@ -190,7 +179,7 @@ func Names() []string {
 	return names
 }
 
-func normalizedChar(c int) int {
+func normalizedChar(c rune) rune {
 	switch {
 	case c >= 'A' && c <= 'Z':
 		c = c - 'A' + 'a'
@@ -206,14 +195,6 @@ func NormalizedName(s string) string {
 	return strings.Map(normalizedChar, s)
 }
 
-// filename returns the location of a file named f inside the data directory.
-func filename(f string) string {
-	if f != "" && f[0] == '/' {
-		return f
-	}
-	return CharsetDir + "/" + f
-}
-
 type translatingWriter struct {
 	w   io.Writer
 	tr  Translator
@@ -226,7 +207,7 @@ func NewTranslatingWriter(w io.Writer, tr Translator) io.WriteCloser {
 	return &translatingWriter{w: w, tr: tr}
 }
 
-func (w *translatingWriter) Write(data []byte) (rn int, rerr os.Error) {
+func (w *translatingWriter) Write(data []byte) (rn int, rerr error) {
 	wdata := data
 	if len(w.buf) > 0 {
 		w.buf = append(w.buf, data...)
@@ -249,7 +230,7 @@ func (w *translatingWriter) Write(data []byte) (rn int, rerr os.Error) {
 	return len(data), nil
 }
 
-func (p *translatingWriter) Close() os.Error {
+func (p *translatingWriter) Close() error {
 	for {
 		n, data, err := p.tr.Translate(p.buf, true)
 		p.buf = p.buf[n:]
@@ -278,9 +259,9 @@ func (p *translatingWriter) Close() os.Error {
 type translatingReader struct {
 	r     io.Reader
 	tr    Translator
-	cdata []byte   // unconsumed data from converter.
-	rdata []byte   // unconverted data from reader.
-	err   os.Error // final error from reader.
+	cdata []byte // unconsumed data from converter.
+	rdata []byte // unconverted data from reader.
+	err   error  // final error from reader.
 }
 
 // NewTranslatingReader returns a new Reader that
@@ -289,7 +270,7 @@ func NewTranslatingReader(r io.Reader, tr Translator) io.Reader {
 	return &translatingReader{r: r, tr: tr}
 }
 
-func (r *translatingReader) Read(buf []byte) (int, os.Error) {
+func (r *translatingReader) Read(buf []byte) (int, error) {
 	for {
 		if len(r.cdata) > 0 {
 			n := copy(buf, r.cdata)
@@ -301,7 +282,7 @@ func (r *translatingReader) Read(buf []byte) (int, os.Error) {
 			n, err := r.r.Read(r.rdata[len(r.rdata):cap(r.rdata)])
 			// Guard against non-compliant Readers.
 			if n == 0 && err == nil {
-				err = os.EOF
+				err = io.EOF
 			}
 			r.rdata = r.rdata[0 : len(r.rdata)+n]
 			r.err = err
@@ -354,27 +335,14 @@ func ensureCap(s []byte, n int) []byte {
 	return t
 }
 
-func appendRune(buf []byte, r int) []byte {
+func appendRune(buf []byte, r rune) []byte {
 	n := len(buf)
 	buf = ensureCap(buf, n+utf8.UTFMax)
 	nu := utf8.EncodeRune(buf[n:n+utf8.UTFMax], r)
 	return buf[0 : n+nu]
 }
 
-func readFile(name string) ([]byte, os.Error) {
-	file := filename(name)
-	fd, err := os.Open(file)
-	if fd == nil {
-		return nil, err
-	}
-	data, err := ioutil.ReadAll(fd)
-	if err != nil {
-		return nil, fmt.Errorf("error reading %q: %v", file, err)
-	}
-	return data, nil
-}
-
-func cache(key interface{}, f func() (interface{}, os.Error)) (interface{}, os.Error) {
+func cache(key interface{}, f func() (interface{}, error)) (interface{}, error) {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 	if x := cacheStore[key]; x != nil {

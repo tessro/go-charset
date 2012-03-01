@@ -1,13 +1,12 @@
 package charset
 
 import (
-	"testing"
-	"testing/iotest"
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"strings"
+	"testing"
+	"testing/iotest"
 )
 
 type translateTest struct {
@@ -30,7 +29,7 @@ func TestCharsets(t *testing.T) {
 	}
 }
 
-func translate(tr Translator, in string) (string, os.Error) {
+func translate(tr Translator, in string) (string, error) {
 	var buf bytes.Buffer
 	r := NewTranslatingReader(strings.NewReader(in), tr)
 	_, err := io.Copy(&buf, r)
@@ -206,7 +205,7 @@ func xlate(x byte) byte {
 	return x + 128
 }
 
-func checkTranslation(in, out []byte) os.Error {
+func checkTranslation(in, out []byte) error {
 	if len(in) != len(out) {
 		return fmt.Errorf("wrong byte count; expected %d got %d", len(in), len(out))
 	}
@@ -223,7 +222,7 @@ type holdingTranslator struct {
 	scratch []byte
 }
 
-func (t *holdingTranslator) Translate(buf []byte, eof bool) (int, []byte, os.Error) {
+func (t *holdingTranslator) Translate(buf []byte, eof bool) (int, []byte, error) {
 	t.scratch = append(t.scratch, buf...)
 	if !eof {
 		return len(buf), nil, nil
@@ -237,7 +236,7 @@ func (t *holdingTranslator) Translate(buf []byte, eof bool) (int, []byte, os.Err
 // shortTranslator translates only one byte at a time, even at eof.
 type shortTranslator [1]byte
 
-func (t *shortTranslator) Translate(buf []byte, eof bool) (int, []byte, os.Error) {
+func (t *shortTranslator) Translate(buf []byte, eof bool) (int, []byte, error) {
 	if len(buf) == 0 {
 		return 0, nil, nil
 	}
@@ -255,7 +254,7 @@ type oneByteWriter struct {
 	w io.Writer
 }
 
-func (w *oneByteWriter) Write(buf []byte) (int, os.Error) {
+func (w *oneByteWriter) Write(buf []byte) (int, error) {
 	n := 0
 	for len(buf) > 0 {
 		nw, err := w.w.Write(buf[0:1])

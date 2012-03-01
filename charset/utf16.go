@@ -2,8 +2,8 @@ package charset
 
 import (
 	"encoding/binary"
-	"os"
-	"utf8"
+	"errors"
+	"unicode/utf8"
 )
 
 func init() {
@@ -16,7 +16,7 @@ type translateFromUTF16 struct {
 	scratch []byte
 }
 
-func (p *translateFromUTF16) Translate(data []byte, eof bool) (int, []byte, os.Error) {
+func (p *translateFromUTF16) Translate(data []byte, eof bool) (int, []byte, error) {
 	data = data[0 : len(data)&^1] // round to even number of bytes.
 	if len(data) < 2 {
 		return 0, nil, nil
@@ -40,7 +40,7 @@ func (p *translateFromUTF16) Translate(data []byte, eof bool) (int, []byte, os.E
 
 	p.scratch = p.scratch[:0]
 	for ; len(data) > 0; data = data[2:] {
-		p.scratch = appendRune(p.scratch, int(p.endian.Uint16(data)))
+		p.scratch = appendRune(p.scratch, rune(p.endian.Uint16(data)))
 		n += 2
 	}
 	return n, p.scratch, nil
@@ -57,7 +57,7 @@ type translateToUTF16 struct {
 	scratch []byte
 }
 
-func (p *translateToUTF16) Translate(data []byte, eof bool) (int, []byte, os.Error) {
+func (p *translateToUTF16) Translate(data []byte, eof bool) (int, []byte, error) {
 	p.scratch = ensureCap(p.scratch[:0], (len(data)+1)*2)
 	if p.first {
 		p.scratch = p.scratch[0:2]
@@ -81,7 +81,7 @@ func (p *translateToUTF16) Translate(data []byte, eof bool) (int, []byte, os.Err
 	return n, p.scratch, nil
 }
 
-func getEndian(arg string) (binary.ByteOrder, os.Error) {
+func getEndian(arg string) (binary.ByteOrder, error) {
 	switch arg {
 	case "le":
 		return binary.LittleEndian, nil
@@ -90,11 +90,10 @@ func getEndian(arg string) (binary.ByteOrder, os.Error) {
 	case "":
 		return nil, nil
 	}
-	return nil, os.NewError("charset: unknown utf16 endianness")
+	return nil, errors.New("charset: unknown utf16 endianness")
 }
 
-
-func fromUTF16(arg string) (Translator, os.Error) {
+func fromUTF16(arg string) (Translator, error) {
 	endian, err := getEndian(arg)
 	if err != nil {
 		return nil, err
@@ -102,7 +101,7 @@ func fromUTF16(arg string) (Translator, os.Error) {
 	return &translateFromUTF16{first: true, endian: endian}, nil
 }
 
-func toUTF16(arg string) (Translator, os.Error) {
+func toUTF16(arg string) (Translator, error) {
 	endian, err := getEndian(arg)
 	if err != nil {
 		return nil, err

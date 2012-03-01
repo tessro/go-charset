@@ -2,8 +2,7 @@ package charset
 
 import (
 	"fmt"
-	"os"
-	"utf8"
+	"unicode/utf8"
 )
 
 func init() {
@@ -68,9 +67,9 @@ const (
 )
 
 type jisTables struct {
-	page0   [256]int
+	page0   [256]rune
 	dbcsoff [256]int
-	cp932   []int
+	cp932   []rune
 }
 
 type translateFromCP932 struct {
@@ -78,7 +77,7 @@ type translateFromCP932 struct {
 	scratch []byte
 }
 
-func (p *translateFromCP932) Translate(data []byte, eof bool) (int, []byte, os.Error) {
+func (p *translateFromCP932) Translate(data []byte, eof bool) (int, []byte, error) {
 	tables := p.tables
 	p.scratch = p.scratch[:0]
 	n := 0
@@ -110,9 +109,9 @@ func (p *translateFromCP932) Translate(data []byte, eof bool) (int, []byte, os.E
 
 type cp932Key bool
 
-func fromCP932(arg string) (Translator, os.Error) {
+func fromCP932(arg string) (Translator, error) {
 	shiftJIS := arg == "shiftjis"
-	tables, err := cache(cp932Key(shiftJIS), func() (interface{}, os.Error) {
+	tables, err := cache(cp932Key(shiftJIS), func() (interface{}, error) {
 		tables := new(jisTables)
 		kana, err := jisGetMap("jisx0201kana.dat", kanaPageSize, kanaPages)
 		if err != nil {
@@ -129,7 +128,7 @@ func fromCP932(arg string) (Translator, os.Error) {
 		}
 
 		// 00..7f same as ascii in cp932
-		for i := 0; i < 0x7f; i++ {
+		for i := rune(0); i < 0x7f; i++ {
 			tables.page0[i] = i
 		}
 
@@ -183,12 +182,12 @@ func fromCP932(arg string) (Translator, os.Error) {
 	return &translateFromCP932{tables: tables.(*jisTables)}, nil
 }
 
-func jisGetMap(name string, pgsize, npages int) ([]int, os.Error) {
+func jisGetMap(name string, pgsize, npages int) ([]rune, error) {
 	data, err := readFile(name)
 	if err != nil {
 		return nil, err
 	}
-	m := []int(string(data))
+	m := []rune(string(data))
 	if len(m) != pgsize*npages {
 		return nil, fmt.Errorf("%q: incorrect length data", name)
 	}
