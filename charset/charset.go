@@ -76,7 +76,7 @@ func registerClass(charset string, from, to func(arg string) (Translator, error)
 
 // Register registers a new character set. If override is true,
 // any existing character sets and aliases will be overridden.
-// All names and aliases in cs are normalised with NormalizedName
+// All names and aliases in cs are normalised with NormalizedName.
 func (cs *Charset) Register(override bool) {
 	cs.Name = NormalizedName(cs.Name)
 	if !override && charsets[cs.Name] != nil {
