@@ -1,18 +1,20 @@
+// The charset package implements translation between character sets.
+// It uses Unicode as the intermediate representation.
+// Because it can be large, the character set data is separated
+// from the charset package. It can be embedded in the Go
+// executable (by importing code.google.com/p/go-charset/data)
+// or made available in a data directory (by settting CharsetDir).
 package charset
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
 	"unicode/utf8"
 )
-
-var errNotFound = errors.New("charset: character set not found")
 
 // A general cache store that character set translators
 // can use for persistent storage of data.
@@ -135,7 +137,7 @@ func readCharsets() {
 func NewReader(charset string, r io.Reader) (io.Reader, error) {
 	cs := Info(charset)
 	if cs == nil {
-		return nil, errNotFound
+		return nil, fmt.Errorf("charset %q not found", charset)
 	}
 	tr, err := cs.TranslatorFrom()
 	if err != nil {
@@ -151,7 +153,7 @@ func NewReader(charset string, r io.Reader) (io.Reader, error) {
 func NewWriter(charset string, w io.Writer) (io.WriteCloser, error) {
 	cs := Info(charset)
 	if cs == nil {
-		return nil, errNotFound
+		return nil, fmt.Errorf("charset %q not found", charset)
 	}
 	tr, err := cs.TranslatorTo()
 	if err != nil {

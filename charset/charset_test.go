@@ -1,7 +1,9 @@
-package charset
+package charset_test
 
 import (
 	"bytes"
+	"code.google.com/p/go-charset/charset"
+	_ "code.google.com/p/go-charset/data"
 	"fmt"
 	"io"
 	"strings"
@@ -29,9 +31,9 @@ func TestCharsets(t *testing.T) {
 	}
 }
 
-func translate(tr Translator, in string) (string, error) {
+func translate(tr charset.Translator, in string) (string, error) {
 	var buf bytes.Buffer
-	r := NewTranslatingReader(strings.NewReader(in), tr)
+	r := charset.NewTranslatingReader(strings.NewReader(in), tr)
 	_, err := io.Copy(&buf, r)
 	if err != nil {
 		return "", err
@@ -40,7 +42,7 @@ func translate(tr Translator, in string) (string, error) {
 }
 
 func testTranslation(t *testing.T, name string, in, out string) {
-	cs := Info(name)
+	cs := charset.Info(name)
 	if cs == nil {
 		t.Fatalf("character set %q not found", name)
 	}
@@ -86,9 +88,9 @@ var testWriters = []func(io.Writer) io.Writer{
 	OneByteWriter,
 }
 
-var testTranslators = []func() Translator{
-	func() Translator { return new(holdingTranslator) },
-	func() Translator { return new(shortTranslator) },
+var testTranslators = []func() charset.Translator{
+	func() charset.Translator { return new(holdingTranslator) },
+	func() charset.Translator { return new(shortTranslator) },
 }
 
 var codepageCharsets = []string{"latin1"}
@@ -109,7 +111,7 @@ func testCodepage(t *testing.T, name string, inReader, outReader func(io.Reader)
 		data[i] = byte(i)
 	}
 	inr := inReader(bytes.NewBuffer(data))
-	r, err := NewReader(name, inr)
+	r, err := charset.NewReader(name, inr)
 	if err != nil {
 		t.Fatalf("cannot make reader for charset %q: %v", name, err)
 	}
@@ -117,7 +119,7 @@ func testCodepage(t *testing.T, name string, inReader, outReader func(io.Reader)
 	r = outr
 
 	var outbuf bytes.Buffer
-	w, err := NewWriter(name, &outbuf)
+	w, err := charset.NewWriter(name, &outbuf)
 	if err != nil {
 		t.Fatalf("cannot make writer  for charset %q: %v", name, err)
 	}
@@ -149,13 +151,13 @@ func TestTranslatingReader(t *testing.T) {
 	}
 }
 
-func testTranslatingReader(t *testing.T, tr Translator, inReader, outReader func(io.Reader) io.Reader) {
+func testTranslatingReader(t *testing.T, tr charset.Translator, inReader, outReader func(io.Reader) io.Reader) {
 	data := make([]byte, 128)
 	for i := range data {
 		data[i] = byte(i)
 	}
 	inr := inReader(bytes.NewBuffer(data))
-	r := NewTranslatingReader(inr, tr)
+	r := charset.NewTranslatingReader(inr, tr)
 	outr := outReader(r)
 	r = outr
 
@@ -178,9 +180,9 @@ func TestTranslatingWriter(t *testing.T) {
 	}
 }
 
-func testTranslatingWriter(t *testing.T, tr Translator, writer func(io.Writer) io.Writer) {
+func testTranslatingWriter(t *testing.T, tr charset.Translator, writer func(io.Writer) io.Writer) {
 	var outbuf bytes.Buffer
-	trw := NewTranslatingWriter(&outbuf, tr)
+	trw := charset.NewTranslatingWriter(&outbuf, tr)
 	w := writer(trw)
 
 	data := make([]byte, 128)

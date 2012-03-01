@@ -1,8 +1,8 @@
 package iconv
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestNames(t *testing.T) {

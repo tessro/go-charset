@@ -2,8 +2,6 @@ package charset
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"unicode/utf8"
 )
 
@@ -73,19 +71,13 @@ type big5Key bool
 
 func fromBig5(arg string) (Translator, error) {
 	big5map, err := cache(big5Key(false), func() (interface{}, error) {
-		file := filename(big5Data)
-		fd, err := os.Open(file)
+		data, err := readFile(big5Data)
 		if err != nil {
-			return nil, fmt.Errorf("charset: cannot open %q: %v", file, err)
+			return nil, fmt.Errorf("charset: cannot open big5 data file: %v", err)
 		}
-		defer fd.Close()
-		buf, err := ioutil.ReadAll(fd)
-		if err != nil {
-			return nil, fmt.Errorf("charset: error reading %q: %v", file, err)
-		}
-		big5map := []rune(string(buf))
+		big5map := []rune(string(data))
 		if len(big5map) != big5Max {
-			return nil, fmt.Errorf("charset: corrupt data in %q", file)
+			return nil, fmt.Errorf("charset: corrupt big5 data")
 		}
 		return big5map, nil
 	})
