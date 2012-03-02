@@ -10,48 +10,10 @@
 package iconv
 
 //#cgo LDFLAGS: -liconv -L/opt/local/lib
-//#include <stdlib.h>
-//#include <string.h>
 //#include <iconv.h>
+//#include <errno.h>
 //iconv_t iconv_open_error = (iconv_t)-1;
 //size_t iconv_error = (size_t)-1;
-//
-//void go_iconvlist(void*x);
-//int nameCallback(unsigned int, char **, void*);
-//
-//typedef struct nameList nameList;
-//struct nameList {
-//	int n;
-//	char **names;
-//	nameList *next;
-//};
-//
-//int
-//addNames(unsigned int n, const char *const *names, void *data) {
-//	// we can't call back to Go because of the stack size issue,
-//	// so copy all the names.
-//	nameList *hd, *e;
-//	int i;
-//
-//	hd = data;
-//	e = malloc(sizeof(nameList));
-//	e->n = n;
-//	e->names = malloc(sizeof(char*) * n);
-//	for(i = 0; i < n; i++){
-//		e->names[i] = strdup(names[i]);
-//	}
-//	e->next = hd->next;
-//	hd->next = e;
-//	return 0;
-//}
-//
-//nameList *
-//listNames(void) {
-//	nameList hd;
-//	hd.next = 0;
-//	iconvlist(addNames, &hd);
-//	return hd.next;
-//}
 import "C"
 import (
 	"code.google.com/p/go-charset/charset"
@@ -67,27 +29,6 @@ import (
 type iconvTranslator struct {
 	cd      C.iconv_t
 	scratch []byte
-}
-
-// Names returns all the character set names known to iconv
-// as a slice of slices. Each entry in the returned slice holds
-// the name and the aliases of a given character set.
-func Names() [][]string {
-	var next *C.nameList
-	var names [][]string
-	for p := C.listNames(); p != nil; p = next {
-		next = p.next
-		aliases := make([]string, p.n)
-		pnames := (*[1e9]*C.char)(unsafe.Pointer(p.names))
-		for i := range aliases {
-			aliases[i] = C.GoString(pnames[i])
-			C.free(unsafe.Pointer(pnames[i]))
-		}
-		C.free(unsafe.Pointer(p.names))
-		C.free(unsafe.Pointer(p))
-		names = append(names, aliases)
-	}
-	return names
 }
 
 func canonicalChar(c int) int {
