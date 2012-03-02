@@ -2,8 +2,11 @@
 // It uses Unicode as the intermediate representation.
 // Because it can be large, the character set data is separated
 // from the charset package. It can be embedded in the Go
-// executable (by importing code.google.com/p/go-charset/data)
-// or made available in a data directory (by settting CharsetDir).
+// executable by importing the data package:
+// 
+//	import _ "code.google.com/p/go-charset/data"
+//
+// It can also made available in a data directory (by settting CharsetDir).
 package charset
 
 import (
