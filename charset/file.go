@@ -10,7 +10,7 @@ import (
 var files = make(map[string]func() (io.ReadCloser, error))
 
 // RegisterDataFile registers the existence of a given data
-// file that may be used by a character-set converter.
+// file with the given name that may be used by a character-set converter.
 // It is intended to be used by packages that wish to embed
 // data in the executable binary, and should not be
 // used normally.

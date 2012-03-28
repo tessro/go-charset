@@ -28,6 +28,7 @@ import (
 
 type iconvTranslator struct {
 	cd      C.iconv_t
+	invalid []byte
 	scratch []byte
 }
 
@@ -49,10 +50,14 @@ func init() {
 			Name:    aliases[0],
 			Aliases: aliases[1:],
 			TranslatorFrom: func() (charset.Translator, error) {
-				return Translator("UTF-8", aliases[0])
+				return Translator("UTF-8", aliases[0], []byte(string(utf8.RuneError)))
 			},
 			TranslatorTo: func() (charset.Translator, error) {
-				return Translator(aliases[0], "UTF-8")
+				// BUG This is wrong. The target character set may not
+				// be ASCII compatible. There's no easy solution
+				// to this other than removing the offending code
+				// point.
+				return Translator(aliases[0], "UTF-8", []byte("?"))
 			},
 		}
 		cs.Register(true)
@@ -60,8 +65,9 @@ func init() {
 }
 
 // Translator returns a Translator that translates between
-// the named character sets.
-func Translator(toCharset, fromCharset string) (charset.Translator, error) {
+// the named character sets. When an invalid multibyte
+// character is found, the bytes in invalid are substituted instead.
+func Translator(toCharset, fromCharset string, invalid []byte) (charset.Translator, error) {
 	cto, cfrom := C.CString(toCharset), C.CString(fromCharset)
 	cd, err := C.iconv_open(cto, cfrom)
 
@@ -74,7 +80,7 @@ func Translator(toCharset, fromCharset string) (charset.Translator, error) {
 		}
 		return nil, err
 	}
-	t := &iconvTranslator{cd: cd}
+	t := &iconvTranslator{cd: cd, invalid: invalid}
 	runtime.SetFinalizer(t, func(*iconvTranslator) {
 		C.iconv_close(cd)
 	})
@@ -104,7 +110,7 @@ func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, r
 		switch err := err.(os.Errno); err {
 		case C.EILSEQ:
 			// invalid multibyte sequence - skip one byte and continue
-			p.scratch = appendRune(p.scratch, utf8.RuneError)
+			p.scratch = appendRune(p.scratch, t.invalid)
 			n++
 			data = data[1:]
 		case C.EINVAL:

@@ -50,24 +50,25 @@ func translate(tr charset.Translator, in string) (string, error) {
 func (test translateTest) run(t *testing.T) {
 	cs := charset.Info(test.charset)
 	if cs == nil {
-		t.Fatalf("character set %q not found", test.charset)
+		t.Fatalf("no info found for %q", test.charset)
 	}
-	fromtr, err := cs.TranslatorFrom()
+	fromtr, err := charset.TranslatorFrom(test.charset)
 	if err != nil {
 		t.Fatalf("error making translator from %q: %v", test.charset, err)
 	}
 	out, err := translate(fromtr, test.in)
 	if err != nil {
-		t.Fatalf("error translating from %q: %v", cs, err)
+		t.Fatalf("error translating from %q: %v", test.charset, err)
 	}
 	if out != test.out {
 		t.Fatalf("error translating from %q: expected %x got %x", test.charset, test.out, out)
 	}
-	if cs.TranslatorTo == nil || !test.canRoundTrip{
+
+	if cs.NoTo || !test.canRoundTrip{
 		return
 	}
 
-	totr, err := cs.TranslatorTo()
+	totr, err := charset.TranslatorTo(test.charset)
 	if err != nil {
 		t.Fatalf("error making translator to %q: %v", test.charset, err)
 	}

@@ -10,41 +10,18 @@
 package charset
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
-	"os"
 	"strings"
-	"sync"
 	"unicode/utf8"
 )
-
-// A general cache store that character set translators
-// can use for persistent storage of data.
-var (
-	cacheMutex sync.Mutex
-	cacheStore = make(map[interface{}]interface{})
-)
-
-// charsetEntry is the data structure for one entry in the JSON config file.
-// If Alias is non-empty, it should be the canonical name of another
-// character set; otherwise Class should be the name
-// of an entry in classes, and Arg is the argument for
-// instantiating it.
-type charsetEntry struct {
-	Aliases []string
-	Desc    string
-	Class   string
-	Arg     string
-}
 
 // Charset holds information about a given character set.
 type Charset struct {
 	Name           string                     // Canonical name of character set.
 	Aliases        []string                   // Known aliases.
 	Desc           string                     // Description.
-	TranslatorFrom func() (Translator, error) // Create a Translator from this character set.
-	TranslatorTo   func() (Translator, error) // Create a Translator To this character set.
+	NoFrom bool		// Not possible to translate from this charset.
+	NoTo bool		// Not possible to translate to this charset.
 }
 
 // Translator represents a character set converter.
@@ -58,91 +35,35 @@ type Translator interface {
 	Translate(data []byte, eof bool) (n int, cdata []byte, err error)
 }
 
-var (
-	readCharsetsOnce sync.Once
-	charsets         = make(map[string]*Charset)
-)
+// A Factory can be used to make character set translators.
+type Factory interface {
+	// TranslatorFrom creates a translator that will translate from the named character
+	// set to UTF-8.
+	TranslatorFrom(name string) (Translator, error) // Create a Translator from this character set to.
 
-// A class of character sets.
-// Each class of can be instantiated with an argument specified in the config file.
-// Many character sets can use a single class.
-type class struct {
-	from, to func(arg string) (Translator, error)
+	// TranslatorTo creates a translator that will translate from UTF-8 to the named character set.
+	TranslatorTo(name string) (Translator, error) // Create a Translator To this character set.
+
+	// Names returns all the character set names accessibile through the factory.
+	Names() []string
+
+	// Info returns information on the named character set. It returns nil if the
+	// factory doesn't recognise the given name.
+	Info(name string) *Charset
 }
 
-// The set of classes, indexed by class name.
-var classes = make(map[string]*class)
+var factories  = []Factory{localFactory{}}
 
-func registerClass(charset string, from, to func(arg string) (Translator, error)) {
-	classes[charset] = &class{from, to}
-}
-
-// Register registers a new character set. If override is true,
-// any existing character sets and aliases will be overridden.
-// All names and aliases in cs are normalised with NormalizedName.
-func (cs *Charset) Register(override bool) {
-	cs.Name = NormalizedName(cs.Name)
-	if !override && charsets[cs.Name] != nil {
-		return
-	}
-	charsets[cs.Name] = cs
-	for i, alias := range cs.Aliases {
-		alias = NormalizedName(alias)
-		cs.Aliases[i] = alias
-		if charsets[alias] == nil || override {
-			charsets[alias] = cs
-		}
-	}
-}
-
-// readCharsets reads the JSON config file.
-// It's done once only, when first needed.
-func readCharsets() {
-	csdata, err := readFile("charsets.json")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, `charset: cannot open "charsets.json": %v\n`, err)
-		return
-	}
-
-	var entries map[string]charsetEntry
-	err = json.Unmarshal(csdata, &entries)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "charset: cannot decode config file: %v\n", err)
-	}
-	for name, e := range entries {
-		name = NormalizedName(name)
-		class := classes[e.Class]
-		if class == nil {
-			continue
-		}
-		cs := &Charset{
-			Name:    name,
-			Aliases: e.Aliases,
-			Desc:    e.Desc,
-		}
-		arg := e.Arg
-		if class.from != nil {
-			cs.TranslatorFrom = func() (Translator, error) {
-				return class.from(arg)
-			}
-		}
-		if class.to != nil {
-			cs.TranslatorTo = func() (Translator, error) {
-				return class.to(arg)
-			}
-		}
-		cs.Register(false)
-	}
+// Register registers a new Factory which will be consulted when NewReader
+// or NewWriter needs a character set translator for a given name.
+func Register(factory Factory) {
+	factories = append(factories, factory)
 }
 
 // NewReader returns a new Reader that translates from the named
 // character set to UTF-8 as it reads r.
 func NewReader(charset string, r io.Reader) (io.Reader, error) {
-	cs := Info(charset)
-	if cs == nil {
-		return nil, fmt.Errorf("charset %q not found", charset)
-	}
-	tr, err := cs.TranslatorFrom()
+	tr, err := TranslatorFrom(charset)
 	if err != nil {
 		return nil, err
 	}
@@ -154,11 +75,7 @@ func NewReader(charset string, r io.Reader) (io.Reader, error) {
 // The Close is necessary to flush any remaining partially translated
 // characters to the output.
 func NewWriter(charset string, w io.Writer) (io.WriteCloser, error) {
-	cs := Info(charset)
-	if cs == nil {
-		return nil, fmt.Errorf("charset %q not found", charset)
-	}
-	tr, err := cs.TranslatorTo()
+	tr, err := TranslatorTo(charset)
 	if err != nil {
 		return nil, err
 	}
@@ -168,20 +85,56 @@ func NewWriter(charset string, w io.Writer) (io.WriteCloser, error) {
 // Info returns information about a character set, or nil
 // if the character set is not found.
 func Info(name string) *Charset {
-	readCharsetsOnce.Do(readCharsets)
-	return charsets[NormalizedName(name)]
-}
-
-// Names returns the canonical names of all supported character sets.
-func Names() []string {
-	var names []string
-	readCharsetsOnce.Do(readCharsets)
-	for name, cs := range charsets {
-		if charsets[cs.Name] == cs {
-			names = append(names, name)
+	for _, f := range factories {
+		if info := f.Info(name); info != nil {
+			return info
 		}
 	}
+	return nil
+}
+
+// Names returns the canonical names of all supported character sets, in alphabetical order.
+func Names() []string {
+	// TODO eliminate duplicates
+	var names []string
+	for _, f := range factories {
+		names = append(names, f.Names()...)
+	}
 	return names
+}
+
+// TranslatorFrom returns a translator that will translate from
+// the named character set to UTF-8.
+func TranslatorFrom(charset string) (Translator, error) {
+	var err error
+	var tr Translator
+	for _, f := range factories {
+		tr, err = f.TranslatorFrom(charset)
+		if err == nil {
+			break
+		}
+	}
+	if tr == nil {
+		return nil, err
+	}
+	return tr, nil
+}
+
+// TranslatorTo returns a translator that will translate from UTF-8
+// to the named character set.
+func TranslatorTo(charset string) (Translator, error) {
+	var err error
+	var tr Translator
+	for _, f := range factories {
+		tr, err = f.TranslatorTo(charset)
+		if err == nil {
+			break
+		}
+	}
+	if tr == nil {
+		return nil, err
+	}
+	return tr, nil
 }
 
 func normalizedChar(c rune) rune {
@@ -345,18 +298,4 @@ func appendRune(buf []byte, r rune) []byte {
 	buf = ensureCap(buf, n+utf8.UTFMax)
 	nu := utf8.EncodeRune(buf[n:n+utf8.UTFMax], r)
 	return buf[0 : n+nu]
-}
-
-func cache(key interface{}, f func() (interface{}, error)) (interface{}, error) {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-	if x := cacheStore[key]; x != nil {
-		return x, nil
-	}
-	x, err := f()
-	if err != nil {
-		return nil, err
-	}
-	cacheStore[key] = x
-	return x, err
 }
