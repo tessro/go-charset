@@ -14,18 +14,18 @@ import (
 
 type translateTest struct {
 	canRoundTrip bool
-	charset string
-	in      string
-	out     string
+	charset      string
+	in           string
+	out          string
 }
 
 var tests = []translateTest{
 	{true, "iso-8859-15", "\xa41 is cheap", "€1 is cheap"},
-	{true, "sjis", "\x82\xb1\x82\xea\x82\xcd\x8a\xbf\x8e\x9a\x82\xc5\x82\xb7\x81B", "これは漢字です。"},
+	{true, "ms-kanji", "\x82\xb1\x82\xea\x82\xcd\x8a\xbf\x8e\x9a\x82\xc5\x82\xb7\x81B", "これは漢字です。"},
 	{true, "utf-16le", "S0\x8c0o0\"oW[g0Y0\x020", "これは漢字です。"},
 	{true, "utf-16be", "0S0\x8c0oo\"[W0g0Y0\x02", "これは漢字です。"},
 	{true, "utf-8", "♔", "♔"},
-	{false, "utf-8", "a♔é\x80", "a♔é"+string(utf8.RuneError)},
+	{false, "utf-8", "a♔é\x80", "a♔é" + string(utf8.RuneError)},
 	{true, "sjis", "", ""},
 	{true, "latin1", "\xa35 for Pepp\xe9", "£5 for Peppé"},
 }
@@ -64,7 +64,7 @@ func (test translateTest) run(t *testing.T) {
 		t.Fatalf("error translating from %q: expected %x got %x", test.charset, test.out, out)
 	}
 
-	if cs.NoTo || !test.canRoundTrip{
+	if cs.NoTo || !test.canRoundTrip {
 		return
 	}
 

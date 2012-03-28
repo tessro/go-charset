@@ -18,7 +18,7 @@ type cpKeyFrom string
 type cpKeyTo string
 
 func (p *translateFromCodePage) Translate(data []byte, eof bool) (int, []byte, error) {
-	p.scratch = ensureCap(p.scratch, len(data) * utf8.UTFMax)[:0]
+	p.scratch = ensureCap(p.scratch, len(data)*utf8.UTFMax)[:0]
 	buf := p.scratch
 	for _, x := range data {
 		r := p.byte2rune[x]
@@ -27,7 +27,7 @@ func (p *translateFromCodePage) Translate(data []byte, eof bool) (int, []byte, e
 			continue
 		}
 		size := utf8.EncodeRune(buf[len(buf):cap(buf)], r)
-		buf = buf[0:len(buf) + size]
+		buf = buf[0 : len(buf)+size]
 	}
 	return len(data), buf, nil
 }
@@ -41,14 +41,14 @@ type toCodePageInfo struct {
 
 type translateToCodePage struct {
 	toCodePageInfo
-	scratch   []byte
+	scratch []byte
 }
 
 func (p *translateToCodePage) Translate(data []byte, eof bool) (int, []byte, error) {
 	p.scratch = ensureCap(p.scratch, len(data))
 	buf := p.scratch[:0]
 
-	for i := 0; i < len(data);  {
+	for i := 0; i < len(data); {
 		r := rune(data[i])
 		size := 1
 		if r >= utf8.RuneSelf {
@@ -103,7 +103,7 @@ func toCodePage(arg string) (Translator, error) {
 
 		info := toCodePageInfo{
 			rune2byte: make(map[rune]byte),
-			same: 256,
+			same:      256,
 		}
 		atStart := true
 		i := rune(0)
@@ -119,7 +119,7 @@ func toCodePage(arg string) (Translator, error) {
 			info.rune2byte[r] = byte(i)
 			i++
 		}
-fmt.Printf("%s, same = %d\n", arg, info.same)
+		fmt.Printf("%s, same = %d\n", arg, info.same)
 		if i != 256 {
 			return nil, fmt.Errorf("charset: %q has wrong rune count (%d)", arg, i)
 		}

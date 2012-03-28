@@ -17,11 +17,11 @@ import (
 
 // Charset holds information about a given character set.
 type Charset struct {
-	Name           string                     // Canonical name of character set.
-	Aliases        []string                   // Known aliases.
-	Desc           string                     // Description.
-	NoFrom bool		// Not possible to translate from this charset.
-	NoTo bool		// Not possible to translate to this charset.
+	Name    string   // Canonical name of character set.
+	Aliases []string // Known aliases.
+	Desc    string   // Description.
+	NoFrom  bool     // Not possible to translate from this charset.
+	NoTo    bool     // Not possible to translate to this charset.
 }
 
 // Translator represents a character set converter.
@@ -52,7 +52,7 @@ type Factory interface {
 	Info(name string) *Charset
 }
 
-var factories  = []Factory{localFactory{}}
+var factories = []Factory{localFactory{}}
 
 // Register registers a new Factory which will be consulted when NewReader
 // or NewWriter needs a character set translator for a given name.

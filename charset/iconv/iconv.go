@@ -9,7 +9,8 @@
 //   )
 package iconv
 
-//#cgo LDFLAGS: -liconv -L/opt/local/lib
+//#cgo LDFLAGS: -L/opt/local/lib
+//#include <stdlib.h>
 //#include <iconv.h>
 //#include <errno.h>
 //iconv_t iconv_open_error = (iconv_t)-1;
@@ -19,20 +20,20 @@ import (
 	"code.google.com/p/go-charset/charset"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
+	"syscall"
 	"unicode/utf8"
 	"unsafe"
 )
 
 type iconvTranslator struct {
 	cd      C.iconv_t
-	invalid []byte
+	invalid rune
 	scratch []byte
 }
 
-func canonicalChar(c int) int {
+func canonicalChar(c rune) rune {
 	if c >= 'a' && c <= 'z' {
 		return c - 'a' + 'A'
 	}
@@ -44,30 +45,27 @@ func canonicalName(s string) string {
 }
 
 func init() {
-	for _, aliases := range Names() {
-		aliases := aliases
-		cs := &charset.Charset{
-			Name:    aliases[0],
-			Aliases: aliases[1:],
-			TranslatorFrom: func() (charset.Translator, error) {
-				return Translator("UTF-8", aliases[0], []byte(string(utf8.RuneError)))
-			},
-			TranslatorTo: func() (charset.Translator, error) {
-				// BUG This is wrong. The target character set may not
-				// be ASCII compatible. There's no easy solution
-				// to this other than removing the offending code
-				// point.
-				return Translator(aliases[0], "UTF-8", []byte("?"))
-			},
-		}
-		cs.Register(true)
-	}
+	charset.Register(iconvFactory{})
+}
+
+type iconvFactory struct {
+}
+
+func (iconvFactory) TranslatorFrom(name string) (charset.Translator, error) {
+	return Translator("UTF-8", name, utf8.RuneError)
+}
+
+func (iconvFactory) TranslatorTo(name string) (charset.Translator, error) {
+	// BUG This is wrong.  The target character set may not be ASCII
+	// compatible.  There's no easy solution to this other than
+	// removing the offending code point.
+	return Translator(name, "UTF-8", '?')
 }
 
 // Translator returns a Translator that translates between
 // the named character sets. When an invalid multibyte
 // character is found, the bytes in invalid are substituted instead.
-func Translator(toCharset, fromCharset string, invalid []byte) (charset.Translator, error) {
+func Translator(toCharset, fromCharset string, invalid rune) (charset.Translator, error) {
 	cto, cfrom := C.CString(toCharset), C.CString(fromCharset)
 	cd, err := C.iconv_open(cto, cfrom)
 
@@ -75,7 +73,7 @@ func Translator(toCharset, fromCharset string, invalid []byte) (charset.Translat
 	C.free(unsafe.Pointer(cto))
 
 	if cd == C.iconv_open_error {
-		if err == os.EINVAL {
+		if err == syscall.EINVAL {
 			return nil, errors.New("iconv: conversion not supported")
 		}
 		return nil, err
@@ -85,6 +83,29 @@ func Translator(toCharset, fromCharset string, invalid []byte) (charset.Translat
 		C.iconv_close(cd)
 	})
 	return t, nil
+}
+
+func (iconvFactory) Names() []string {
+	all := aliases()
+	names := make([]string, 0, len(all))
+	for name, aliases := range all {
+		if aliases[0] == name {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func (iconvFactory) Info(name string) *charset.Charset {
+	all := aliases()
+	a, ok := all[name]
+	if !ok {
+		return nil
+	}
+	return &charset.Charset{
+		Name:    name,
+		Aliases: a,
+	}
 }
 
 func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, rerr error) {
@@ -107,10 +128,10 @@ func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, r
 		if r != C.iconv_error || err == nil {
 			return n, p.scratch, nil
 		}
-		switch err := err.(os.Errno); err {
+		switch err := err.(syscall.Errno); err {
 		case C.EILSEQ:
 			// invalid multibyte sequence - skip one byte and continue
-			p.scratch = appendRune(p.scratch, t.invalid)
+			p.scratch = appendRune(p.scratch, p.invalid)
 			n++
 			data = data[1:]
 		case C.EINVAL:
@@ -154,7 +175,7 @@ func ensureCap(s []byte, n int) []byte {
 	return t
 }
 
-func appendRune(buf []byte, r int) []byte {
+func appendRune(buf []byte, r rune) []byte {
 	n := len(buf)
 	buf = ensureCap(buf, n+utf8.UTFMax)
 	nu := utf8.EncodeRune(buf[n:n+utf8.UTFMax], r)

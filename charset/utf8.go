@@ -13,12 +13,13 @@ type translateToUTF8 struct {
 }
 
 var errorBytes = []byte(string(utf8.RuneError))
+
 const errorRuneLen = len(string(utf8.RuneError))
 
 func (p *translateToUTF8) Translate(data []byte, eof bool) (int, []byte, error) {
 	p.scratch = ensureCap(p.scratch, (len(data))*errorRuneLen)
 	buf := p.scratch[:0]
-	for i := 0; i < len(data);  {
+	for i := 0; i < len(data); {
 		// fast path for ASCII
 		if b := data[i]; b < utf8.RuneSelf {
 			buf = append(buf, b)
@@ -38,7 +39,7 @@ func (p *translateToUTF8) Translate(data []byte, eof bool) (int, []byte, error) 
 			}
 			buf = append(buf, errorBytes...)
 		} else {
-			buf = append(buf, data[i: i+size]...)
+			buf = append(buf, data[i:i+size]...)
 		}
 		i += size
 	}
