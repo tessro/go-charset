@@ -119,7 +119,8 @@ func toCodePage(arg string) (Translator, error) {
 			info.rune2byte[r] = byte(i)
 			i++
 		}
-		fmt.Printf("%s, same = %d\n", arg, info.same)
+		// TODO fix tables
+		// fmt.Printf("%s, same = %d\n", arg, info.same)
 		if i != 256 {
 			return nil, fmt.Errorf("charset: %q has wrong rune count (%d)", arg, i)
 		}
