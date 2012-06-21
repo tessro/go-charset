@@ -148,7 +148,7 @@ func normalizedChar(c rune) rune {
 }
 
 // NormalisedName returns s with all Roman capitals
-// mapped to lower case, and '_' mapped to '-'
+// mapped to lower case and '_' mapped to '-'
 func NormalizedName(s string) string {
 	return strings.Map(normalizedChar, s)
 }
