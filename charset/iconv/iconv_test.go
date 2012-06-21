@@ -1,7 +1,7 @@
 package iconv_test
 
 import (
-	_ "."
+	_ "code.google.com/p/go-charset/charset/iconv"
 	"bytes"
 	"code.google.com/p/go-charset/charset"
 	"io"
