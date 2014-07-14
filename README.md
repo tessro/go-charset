@@ -20,6 +20,7 @@ the following character sets:
 * iso-8859-8
 * iso-8859-9
 * koi8-r
+* us-ascii
 * utf-16
 * utf-16be
 * utf-16le
