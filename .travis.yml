@@ -1,0 +1,7 @@
+before_install: cd charset
+
+language: go
+
+go:
+  - 1.5.1
+  - tip
