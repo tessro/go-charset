@@ -1,5 +1,3 @@
-before_install: cd charset
-
 language: go
 
 go:
