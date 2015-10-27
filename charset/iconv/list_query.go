@@ -4,13 +4,13 @@
 
 package iconv
 
-//#cgo LDFLAGS: -liconv -L/opt/local/lib
+//#cgo darwin LDFLAGS: -liconv
+//#cgo freebsd LDFLAGS: -liconv
+//#cgo windows LDFLAGS: -liconv
 //#include <stdlib.h>
 //#include <string.h>
 //#include <iconv.h>
 //#include <errno.h>
-//iconv_t iconv_open_error = (iconv_t)-1;
-//size_t iconv_error = (size_t)-1;
 //
 //typedef struct nameList nameList;
 //struct nameList {
@@ -48,7 +48,9 @@ package iconv
 import "C"
 
 import (
+	"strings"
 	"sync"
+	"unsafe"
 )
 
 var getAliasesOnce sync.Once
@@ -56,6 +58,7 @@ var allAliases = map[string][]string{}
 
 func aliases() map[string][]string {
 	getAliasesOnce.Do(getAliases)
+	return allAliases
 }
 
 func getAliases() {
@@ -65,7 +68,7 @@ func getAliases() {
 		aliases := make([]string, p.n)
 		pnames := (*[1e9]*C.char)(unsafe.Pointer(p.names))
 		for i := range aliases {
-			aliases[i] = C.GoString(pnames[i])
+			aliases[i] = strings.ToLower(C.GoString(pnames[i]))
 			C.free(unsafe.Pointer(pnames[i]))
 		}
 		C.free(unsafe.Pointer(p.names))

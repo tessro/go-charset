@@ -9,7 +9,7 @@
 //   )
 package iconv
 
-//#cgo LDFLAGS: -L/opt/local/lib
+//#cgo darwin LDFLAGS: -liconv
 //#include <stdlib.h>
 //#include <iconv.h>
 //#include <errno.h>
@@ -97,6 +97,7 @@ func (iconvFactory) Names() []string {
 }
 
 func (iconvFactory) Info(name string) *charset.Charset {
+	name = strings.ToLower(name)
 	all := aliases()
 	a, ok := all[name]
 	if !ok {
