@@ -3,8 +3,8 @@
 // Because it can be large, the character set data is separated
 // from the charset package. It can be embedded in the Go
 // executable by importing the data package:
-// 
-//	import _ "code.google.com/p/go-charset/data"
+//
+//	import _ "github.com/paulrosania/go-charset/data"
 //
 // It can also made available in a data directory (by settting CharsetDir).
 package charset
@@ -223,7 +223,7 @@ type translatingReader struct {
 }
 
 // NewTranslatingReader returns a new Reader that
-// translates data using the given Translator as it reads r.   
+// translates data using the given Translator as it reads r.
 func NewTranslatingReader(r io.Reader, tr Translator) io.Reader {
 	return &translatingReader{r: r, tr: tr}
 }

@@ -3,8 +3,8 @@
 // go run generate.go && go fmt
 
 // The generate-charset-data command generates the Go source code
-// for code.google.com/p/go-charset/data from the data files
-// found in code.google.com/p/go-charset/datafiles.
+// for github.com/paulrosania/go-charset/data from the data files
+// found in github.com/paulrosania/go-charset/datafiles.
 // It should be run in the go-charset root directory.
 // The resulting Go files will need gofmt'ing.
 package main
