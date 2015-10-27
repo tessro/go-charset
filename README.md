@@ -1,5 +1,7 @@
 # Character set conversion for Go
 
+[![Build Status](https://travis-ci.org/paulrosania/go-charset.svg?branch=master)](https://travis-ci.org/paulrosania/go-charset)
+
 A fork of [go-charset](https://code.google.com/p/go-charset/), which itself is a
 port of inferno's convcs for Go, which supports conversion to and from utf-8 for
 the following character sets:
