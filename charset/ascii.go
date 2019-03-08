@@ -21,7 +21,7 @@ type codePointError struct {
 }
 
 func (e *codePointError) Error() string {
-	return fmt.Sprintf("Parse error at index %n: Code point %n is undefined in %s", e.i, e.cp, e.charset)
+	return fmt.Sprintf("Parse error at index %v: Code point %v is undefined in %s", e.i, e.cp, e.charset)
 }
 
 func (strict translateFromASCII) Translate(data []byte, eof bool) (int, []byte, error) {

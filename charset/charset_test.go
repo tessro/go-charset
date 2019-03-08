@@ -177,7 +177,7 @@ func testTranslatingReader(t *testing.T, tr charset.Translator, inReader, outRea
 	}
 	err = checkTranslation(data, outbuf.Bytes())
 	if err != nil {
-		t.Fatalf("translator %T, readers %T, %T, %v\n", err)
+		t.Fatalf("translator %T, readers %T, %T, %v\n", tr, inr, outr, err)
 	}
 }
 
