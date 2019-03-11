@@ -118,7 +118,8 @@ func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, r
 		nData := C.size_t(len(data))
 
 		ns := len(p.scratch)
-		cScratch := (*C.char)(unsafe.Pointer(&p.scratch[ns : ns+1][0]))
+		inner := p.scratch[ns : ns+1][0]
+		cScratch := (*C.char)(unsafe.Pointer(&inner))
 		nScratch := C.size_t(cap(p.scratch) - ns)
 		r, err := C.iconv(p.cd, &cData, &nData, &cScratch, &nScratch)
 
