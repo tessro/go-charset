@@ -3,7 +3,8 @@ sudo: false
 language: go
 
 go:
-  - 1.5.1
+  - 1.12.1
+  - 1.11.6
   - tip
 
 os:
