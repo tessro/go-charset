@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/paulrosania/go-charset/charset"
-	_ "github.com/paulrosania/go-charset/charset/iconv"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/paulrosania/go-charset/charset"
+	_ "github.com/paulrosania/go-charset/charset/iconv"
 )
 
 var listFlag = flag.Bool("l", false, "list available character sets")
@@ -42,7 +43,7 @@ func main() {
 		var err error
 		f, err = os.Open(flag.Arg(0))
 		if err != nil {
-			fatalf("cannot open %q: %v", err)
+			fatalf("cannot open %q: %v", flag.Arg(0), err)
 		}
 	}
 	r, err := charset.NewReader(*fromCharset, f)
@@ -51,7 +52,7 @@ func main() {
 	}
 	w, err := charset.NewWriter(*toCharset, os.Stdout)
 	if err != nil {
-		fatalf("cannot translate to %q: ", err)
+		fatalf("cannot translate to %q: %v", *toCharset, err)
 	}
 	_, err = io.Copy(w, r)
 	if err != nil {
