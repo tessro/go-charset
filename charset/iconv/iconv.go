@@ -9,22 +9,34 @@
 //   )
 package iconv
 
-//#cgo darwin LDFLAGS: -liconv
-//#include <stdlib.h>
-//#include <iconv.h>
-//#include <errno.h>
-//iconv_t iconv_open_error = (iconv_t)-1;
-//size_t iconv_error = (size_t)-1;
+/*
+#cgo darwin LDFLAGS: -liconv
+#include <stdlib.h>
+#include <iconv.h>
+#include <errno.h>
+
+iconv_t iconv_open_error = (iconv_t)-1;
+size_t iconv_error = (size_t)-1;
+
+// From: https://github.com/djimenez/iconv-go/blob/master/converter.go
+//
+// As of Go 1.6 passing a pointer to Go pointer will lead to panic
+// Therefore we use this wrapper function, to avoid passing **char directly from go
+size_t call_iconv(iconv_t ctx, char *in, size_t *size_in, char *out, size_t *size_out) {
+	return iconv(ctx, &in, size_in, &out, size_out);
+}
+*/
 import "C"
 import (
 	"errors"
 	"fmt"
-	"github.com/paulrosania/go-charset/charset"
 	"runtime"
 	"strings"
 	"syscall"
 	"unicode/utf8"
 	"unsafe"
+
+	"github.com/paulrosania/go-charset/charset"
 )
 
 type iconvTranslator struct {
@@ -120,7 +132,7 @@ func (p *iconvTranslator) Translate(data []byte, eof bool) (rn int, rd []byte, r
 		ns := len(p.scratch)
 		cScratch := (*C.char)(unsafe.Pointer(&p.scratch[ns : ns+1][0]))
 		nScratch := C.size_t(cap(p.scratch) - ns)
-		r, err := C.iconv(p.cd, &cData, &nData, &cScratch, &nScratch)
+		r, err := C.call_iconv(p.cd, cData, &nData, cScratch, &nScratch)
 
 		p.scratch = p.scratch[0 : cap(p.scratch)-int(nScratch)]
 		n += len(data) - int(nData)
